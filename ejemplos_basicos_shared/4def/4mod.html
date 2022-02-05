@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Corrected - Affine transforms and model matrix</title>
+  </head>
+
+  <body onload="draw_triangles()">
+  <table>
+    <tbody>
+      <tr>
+        <td>        
+          <canvas id="webgl" width="800" height="800">
+          Please use a browser that supports "canvas"
+          </canvas>
+        </td>
+        <td>        
+          <p id="mensajes"></p>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+	<br>
+	<br>
+	<button id="b_all" onclick="alltogether()">Execute all operations</button>
+  <button id="b_partial" onclick="partialexec()">Execute only n operations</button>
+  &nbsp
+  <input style="text-align: center; height: 26px; width: 30px;" id="numops" maxlength="1" value="1" type="text">
+  &nbsp
+  <button id="b_start" onclick="partialexec()">Start at operation:</button>
+  &nbsp
+  <input style="text-align: center; height: 26px; width: 30px;" id="numstart" maxlength="1" value="1" type="text">
+	&nbsp
+	<input type="checkbox" id="inverse_order"> Reverse order<br>
+
+    <script src="lib/webgl-utils.js"></script>
+    <script src="lib/webgl-debug.js"></script>
+    <script src="lib/cuon-utils.js"></script>
+	<script src="lib/cuon-matrix.js"></script>
+    <script src="4mod.js"></script>
+	<script src="operaciones.js"></script>
+  </body>
+</html>
