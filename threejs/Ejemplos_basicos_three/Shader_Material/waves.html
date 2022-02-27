@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+
+<html lang="en">
+
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<title>Wave</title>
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style type="text/css">
+				* {
+					margin: 0;
+					padding: 0;
+				}
+				body {
+					margin: 0px;
+					overflow: hidden;
+					font-family: Monospace;
+					text-align: center;
+		 		}
+	 	</style>
+	</head>
+
+	<body>
+
+		<div>
+			Siguiendo la función descrita en el siguiente enlace:
+			<a href="https://en.wikipedia.org/wiki/Damped_sine_wave">Damped sine wave</a>
+			<br/>
+			Mode 1 : Phong shading | Mode 2 : solo ambiente | Mode 3 : solo difusa | Mode 4 : solo especular
+		</div>
+
+		<div id="container"></div>
+
+		<script src="files/three.js"></script>
+		<script src="files/stats.min.js"></script>
+		<script src="files/dat.gui.min.js"></script>
+		<script src="files/OrbitControls.js"></script>
+
+
+		<script type="x-shader/x-vertex" id="vertexShader">
+			precision highp float;
+
+			varying vec3 normalInterp;
+			varying vec3 vertPos;
+
+			uniform float time;
+			uniform float size;
+			uniform float w;
+			uniform float lambda;
+			uniform float segments;
+			uniform float phase;
+			uniform float A;
+
+			void main() {
+
+				vec3 newPosition = position;
+				float distance = length(position.xy) / (size/2.0);
+
+				if ((distance-0.05) < time) {
+
+					float dis = max( time-distance, abs(time-distance) );
+
+					//newPosition.z = A * exp(-lambda*dis) * cos(w*dis+phase);
+					newPosition.z = A * exp(-lambda*0.5*dis) * exp(-lambda*0.5*time) * cos(w*dis+phase);
+
+					// derivada de la funcion teniendo en cuenta x e y
+
+					float der1 = ( -A * w 	   * exp((-0.5*lambda*time)-(lambda*0.5*dis)) * sin(w*dis+phase))  /  (length(position.xy) * (size/2.0));
+					float der2 = ( -A * lambda * exp((-0.5*lambda*time)-(lambda*dis)) * cos(w*dis+phase)) / (length(position.xy)*(size/2.0));
+
+					float norx = newPosition.x * der1 + newPosition.x * der2;
+					float nory = newPosition.y * der1 + newPosition.y * der2;
+
+					normalInterp = normalMatrix * vec3(-norx,-nory,1.0);
+					if (distance==0.0) {
+						normalInterp = normalMatrix * vec3(0.0,0.0,1.0);
+					}
+
+				} else { // (distance-0.05) > time
+
+					normalInterp = normalMatrix * normal;
+
+				}
+
+				vec4 vertPos4 = modelViewMatrix * vec4(newPosition, 1.0);
+				vertPos = vec3(vertPos4) / vertPos4.w;
+
+				gl_Position = projectionMatrix * modelViewMatrix * vec4( newPosition, 1.0 );
+			} // main
+
+		</script>
+
+
+		<script type="x-shader/x-vertex" id="fragmentShader">
+			// http://www.mathematik.uni-marburg.de/~thormae/lectures/graphics1/code/WebGLShaderLightMat/ShaderLightMat.html
+			precision highp float;
+			varying vec3 normalInterp;
+			varying vec3 vertPos;
+
+			uniform int mode;
+
+			uniform vec3 lightPos;
+			uniform vec3 ambientColor;
+			uniform vec3 diffuseColor;
+			uniform vec3 specColor;
+
+			void main() {
+
+			    vec3 normal = normalize(normalInterp);
+			    vec3 lightDir = normalize(lightPos - vertPos);
+			    vec3 reflectDir = reflect(-lightDir, normal);
+			    vec3 viewDir = normalize(-vertPos);
+
+			    float lambertian = max(dot(lightDir,normal), 0.0);
+			    float specular = 0.0;
+
+			    if(lambertian > 0.0) {
+			       float specAngle = max(dot(reflectDir, viewDir), 0.0);
+			       specular = pow(specAngle, 4.0);
+			    }
+			    gl_FragColor = vec4(ambientColor +
+			                      lambertian*diffuseColor +
+			                      specular*specColor, 1.0);
+
+			    // solo ambiente
+			    if(mode == 2) gl_FragColor = vec4(ambientColor, 1.0);
+			    // solo difusa
+			    if(mode == 3) gl_FragColor = vec4(lambertian*diffuseColor, 1.0);
+			    // solo especular
+			    if(mode == 4) gl_FragColor = vec4(specular*specColor, 1.0);
+
+				}
+		</script>
+
+
+		<script type="text/javascript" id="mainCode">
+
+			var stats = new Stats();
+			document.getElementById( "container" ).appendChild( stats.dom );
+
+			var WAVES = {
+				ms_Renderer: null,
+				ms_Camera: null,
+				ms_Scene: null,
+				ms_Controls: null,
+				ms_Params : {
+					time : 0.002, // 0.005
+					size : 400,
+					segments : 150,
+					w: 20, // 20
+					lambda : 5,
+					a : 40, // 5
+					phase : Math.PI/2, // Math.PI/2;
+					mode : 1,
+					diffuseColor : new THREE.Color(0x334a96),
+					specColor : new THREE.Color(0xffffff),
+					ambientColor : new THREE.Color(0x3457c8),
+					lightX : 1,
+					lightY : 1,
+					lightZ : 1
+				},
+
+				Initialize: function () {
+
+					this.ms_Renderer = new THREE.WebGLRenderer();
+					this.ms_Renderer.setPixelRatio( window.devicePixelRatio );
+					this.ms_Renderer.context.getExtension('OES_texture_float');
+					this.ms_Renderer.context.getExtension('OES_texture_float_linear');
+
+					this.ms_Renderer.setClearColor(0x444444, 1);
+
+					document.body.appendChild(this.ms_Renderer.domElement);
+
+					this.ms_Scene = new THREE.Scene();
+
+					this.ms_Camera = new THREE.PerspectiveCamera(45.0, window.innerWidth/window.innerHeight, 1, 10000);
+
+					this.ms_Camera.lookAt(new THREE.Vector3());
+
+					this.ms_Scene.add( this.ms_Camera );
+					this.ms_Camera.position.set(0, this.ms_Params.size-100, this.ms_Params.size-100);
+
+					// Initialize Orbit control
+					this.ms_Controls = new THREE.OrbitControls(this.ms_Camera, this.ms_Renderer.domElement);
+					this.ms_Controls.userPan = false;
+					this.ms_Controls.userPanSpeed = 0.0;
+					this.ms_Controls.minDistance = 0;
+					this.ms_Controls.maxDistance = 2000.0;
+					this.ms_Controls.minPolarAngle = 0;
+					this.ms_Controls.maxPolarAngle = Math.PI * 0.495;
+
+					var _this = this;
+
+					var gui = new dat.GUI();
+
+					this.createObject();
+
+					gui.add(this.ms_Params, 'size').min(200).max(1000).step(20);
+					gui.add(this.ms_Params, 'time').min(0.001).max(0.1).step(0.01);
+					gui.add(this.ms_Params, 'segments').min(1).max(1000).step(1);
+					gui.add(this.ms_Params, 'w').min(1).max(100).step(1);
+					gui.add(this.ms_Params, 'lambda').min(0).max(20).step(1);
+					gui.add(this.ms_Params, 'a').min(1).max(50).step(1);
+					gui.add(this.ms_Params, 'mode').min(1).max(4).step(1);
+					gui.add(this.ms_Params, 'lightX').min(0).max(1000).step(1);
+					gui.add(this.ms_Params, 'lightY').min(0).max(1000).step(1);
+					gui.add(this.ms_Params, 'lightZ').min(0).max(1000).step(1);
+
+
+					// D
+					var ConfiguracionD = function(){
+						this.diffuseColor = "#334a96";
+					};
+
+					var confD = new ConfiguracionD();
+
+					var controladorD = gui.addColor( confD, 'diffuseColor');
+
+					controladorD.onChange( function( colorValue ) {
+
+				      colorValue=colorValue.replace( '#','0x' );
+				      var diffuseColor = new THREE.Color( eval(colorValue) );
+				      _this.ms_Params.diffuseColor = diffuseColor;
+				      material.uniforms[ 'diffuseColor' ].value = diffuseColor;
+				  	});
+
+				  	var ConfiguracionA=function(){
+						this.ambientColor = "#3457c8";
+					};
+
+					// A
+					var confA = new ConfiguracionA();
+
+					var controladorA = gui.addColor( confA, 'ambientColor');
+
+					controladorA.onChange( function( colorValue ) {
+				      colorValue=colorValue.replace( '#','0x' );
+				      var ambientColor = new THREE.Color( eval(colorValue) );
+				      _this.ms_Params.ambientColor = ambientColor;
+				      material.uniforms[ 'ambientColor' ].value = ambientColor;
+				  	}
+					);
+
+					// S
+				  var ConfiguracionS = function() {
+						this.specColor = "#ffffff";
+					};
+
+					var confS = new ConfiguracionS();
+
+					var controladorS = gui.addColor( confS, 'specColor');
+
+					controladorS.onChange( function( colorValue ) {
+				      colorValue=colorValue.replace( '#','0x' );
+				      var specColor = new THREE.Color( eval(colorValue) );
+				      _this.ms_Params.specColor = specColor;
+				      material.uniforms[ 'specColor' ].value = specColor;
+				  	}
+					);
+
+
+					var restart = { Simular:function() {
+						_this.ms_Scene.remove(mesh);
+						_this.createObject();
+					}};
+
+					gui.add(restart,'Simular')
+
+					render();
+				}, // Initialize: function ()
+
+				createObject: function() {
+
+					material = new THREE.ShaderMaterial( {
+						uniforms: {
+							time: {
+								type: "f",
+								value: 0.0
+							},
+							size: {
+								type: "f",
+								value: this.ms_Params.size
+							},
+							w: {
+								type: "f",
+								value: this.ms_Params.w
+							},
+							segments: {
+								type: "f",
+								value: this.ms_Params.segments
+							},
+							lambda: {
+								type: "f",
+								value: this.ms_Params.lambda
+							},
+							phase: {
+								type: "f",
+								value: this.ms_Params.phase
+							},
+							A: {
+								type: "f",
+								value: this.ms_Params.a
+							},
+							diffuseColor: {
+								type: "3fv",
+								value: this.ms_Params.diffuseColor
+							},
+							ambientColor: {
+								type: "3fv",
+								value: this.ms_Params.ambientColor
+							},
+							specColor: {
+								type: "3fv",
+								value: this.ms_Params.specColor
+							},
+							lightPos: {
+								type: "3fv",
+								value: new THREE.Vector3(this.ms_Params.lightX,this.ms_Params.lightY,this.ms_Params.lightZ)
+							},
+							mode: {
+								type: "f",
+								value: this.ms_Params.mode
+							}
+						},
+						vertexShader: document.getElementById( 'vertexShader' ).textContent,
+						fragmentShader: document.getElementById( 'fragmentShader' ).textContent
+					});
+
+					var plane = new THREE.PlaneGeometry(this.ms_Params.size, this.ms_Params.size, this.ms_Params.segments,this.ms_Params.segments);
+					mesh = new THREE.Mesh(
+						plane,
+						material
+						);
+					mesh.rotation.x = -Math.PI/2;
+					mesh.rotation.z = 0;
+
+					mesh.geometry.computeFaceNormals();
+					mesh.geometry.computeVertexNormals();
+
+					this.ms_Scene.add( mesh );
+				}, // createObject: function()
+
+				Display: function () {
+					this.ms_Renderer.render(this.ms_Scene, this.ms_Camera);
+				},
+
+				Update: function () {
+					this.ms_Controls.update();
+					this.Display();
+				},
+
+				Time: function () {
+					return this.ms_Params.time;
+				},
+
+				Mode: function () {
+					return this.ms_Params.mode;
+				},
+
+				LightX: function () {
+					return this.ms_Params.lightX;
+				},
+
+				LightY: function () {
+					return this.ms_Params.lightY;
+				},
+
+				LightZ: function () {
+					return this.ms_Params.lightZ;
+				},
+
+				Resize: function (inWidth, inHeight) {
+					this.ms_Camera.aspect = inWidth / inHeight;
+					this.ms_Camera.updateProjectionMatrix();
+					this.ms_Renderer.setSize(inWidth, inHeight);
+					this.Display();
+				}
+			}; // var WAVES
+
+
+			WAVES.Initialize();
+
+			window.addEventListener( 'resize', function () {
+				WAVES.Resize(window.innerWidth, window.innerHeight);
+			});
+
+			WAVES.Resize(window.innerWidth, window.innerHeight);
+
+			function render() {
+
+				material.uniforms[ 'time' ].value = material.uniforms[ 'time' ].value+WAVES.Time();
+				material.uniforms[ 'mode' ].value = WAVES.Mode();
+				material.uniforms[ 'lightPos' ].value = new THREE.Vector3(WAVES.LightX(),WAVES.LightY(),WAVES.LightZ());
+				requestAnimationFrame( render );
+				WAVES.Update();
+				stats.update();
+
+			}
+
+		</script>
+
+
+	</body>
+
+</html>

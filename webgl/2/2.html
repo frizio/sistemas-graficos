@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Use of VBOs</title>
+  </head>
+
+  <body onload="draw_triangles()">
+    <canvas id="webgl" width="400" height="400">
+    Please use a browser that supports "canvas"
+    </canvas>
+	<br>
+	<br>
+	<button id="dibuja" onclick="switch_set()">Switch buffers and redraw</button>
+
+    <script src="../lib/webgl-utils.js"></script>
+    <script src="../lib/webgl-debug.js"></script>
+    <script src="../lib/cuon-utils.js"></script>
+    <script src="2.js"></script>
+  </body>
+</html>

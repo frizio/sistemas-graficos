@@ -1,0 +1,200 @@
+// 4.js
+// Vertex shader program
+var VSHADER_SOURCE = 
+  'attribute vec4 point_position; \n' + // Gets vertex coordinates
+  'attribute vec4 point_color; \n' + // Gets vertex color
+  'varying vec4 frag_color; \n' + // Pass color to fragment shader
+  'uniform mat4 mat_transfo; \n' +
+  'uniform int point_ejes; \n' +
+  'void main() {\n' +
+  'if (point_ejes == 1) { \n' +
+  '  gl_Position = point_position; \n' +
+  '  frag_color = vec4(0.0, 0.0, 0.0, 1.0); \n' +
+  ' } else { \n' +
+  '  gl_Position = mat_transfo * point_position;\n' + // Set the vertex coordinates of the point
+  '  frag_color = point_color;\n' + // Color fed from buffer goes to fragment shader
+  ' } \n' +
+  
+  '}\n';
+
+// Fragment shader program
+var FSHADER_SOURCE =
+  'precision mediump float; \n' +
+  'varying vec4 frag_color; \n' +
+  'void main() {\n' +
+  '  gl_FragColor = frag_color; \n' + // Sets the point color
+  '}\n';
+
+var ejes = new Float32Array ([-1.0,0.0, 1.0,0.0, 0.0,-1.0, 0.0, 1.0]);
+var buffer1 = new Float32Array ([-0.3,0.3,1.0,0.0,0.0,  -0.3,0.1,0.0,1.0,0.0, 0.0,0.3,0.0,0.0,1.0]);
+//var buffer1 = new Float32Array ([0.0,0.0,1.0,0.0,0.0,  0.0,-0.2,0.0,1.0,0.0, 0.3,0.0,0.0,0.0,1.0]);
+var angulo = 0;  // Accumulated angle to rotate
+var add_translate = 0;  // Accumulated length to translate
+var add_scale = 1; // Accumulated scale factor
+var init_run = 0; //Signals if we are in initial run
+var num_operaciones = 0;
+var only_n_operations = 0;
+var start_operation = 0;
+
+
+
+function draw_triangles() {
+  // Retrieve <canvas> element
+  var canvas = document.getElementById('webgl');
+
+  // Get the rendering context for WebGL
+  var gl = getWebGLContext(canvas);
+  if (!gl) {
+    console.log('Failed to get the rendering context for WebGL');
+    return;
+  }
+
+  // Initialize shaders
+  if (!initShaders(gl, VSHADER_SOURCE, FSHADER_SOURCE)) {
+    console.log('Failed to intialize shaders.');
+    return;
+  }
+
+  var js_position = gl.getAttribLocation(gl.program, 'point_position');
+  var js_color = gl.getAttribLocation(gl.program, 'point_color');
+  var js_mat_transfo = gl.getUniformLocation(gl.program, 'mat_transfo');
+  var js_ejes = gl.getUniformLocation(gl.program, 'point_ejes');
+
+  
+  
+  var cuantosVertices = 3;
+  var FSIZE = buffer1.BYTES_PER_ELEMENT;
+  var vertexBuffer = gl.createBuffer();
+  if (!vertexBuffer) {
+	  console.log("Error creating vertexBuffer");
+  }
+  var ejesBuffer = gl.createBuffer();
+  if (!ejesBuffer) {
+	  console.log("Error creating ejesBuffer");
+  }
+  
+  // First, print the cartesian coordinate axis
+  
+  gl.bindBuffer(gl.ARRAY_BUFFER, ejesBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, ejes, gl.STATIC_DRAW);
+  gl.vertexAttribPointer(js_position, 2, gl.FLOAT, false, 0, 0);
+  gl.enableVertexAttribArray(js_position);
+  gl.uniform1i(js_ejes, 1);
+  
+  gl.clearColor(0.9, 1.0, 1.0, 1.0);
+
+  // Clear <canvas>
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.LINES, 0, 4); //Draws cartesian axis
+  
+  
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, buffer1, gl.STATIC_DRAW);
+  gl.vertexAttribPointer(js_position, 2, gl.FLOAT, false, FSIZE * 5, 0);
+  gl.enableVertexAttribArray(js_position);
+  gl.vertexAttribPointer(js_color, 3, gl.FLOAT, false, FSIZE * 5, FSIZE * 2);
+  gl.enableVertexAttribArray(js_color);
+  gl.uniform1i(js_ejes, 0);
+
+  // Now, compose the requested transforms and get the resultant matrix
+  
+  var matriz  = new Matrix4();
+  // We don't know which transform is requested, so we start with identity matrix
+  matriz.setIdentity();
+  if (init_run == 1)
+  {    
+	  // Transform matrix computed only in second run
+    var cadena_transformaciones = "";
+    var index_of_last_operation = start_operation + only_n_operations;
+    // only_n_operations has been set to the full or specified number of operations in the button event handler
+    for (var i = index_of_last_operation - 1 ; i >=  start_operation ; i--) {
+      var operacion_requerida = secuencia_operaciones[i][0];
+	    switch (operacion_requerida) {
+        case "t":
+          // Translation
+          var x_value = secuencia_operaciones[i][1]/100.0;
+          var y_value = secuencia_operaciones[i][2]/100.0;
+          matriz.translate(x_value, y_value, 0);
+          cadena_transformaciones += "t" + "  " + x_value.toString() + "  " + y_value.toString() + "<br><br>";
+          break;
+        case "s":
+          // Scale
+          var x_scale = secuencia_operaciones[i][3];
+          var y_scale = secuencia_operaciones[i][4];
+          matriz.scale(x_scale, y_scale,1);
+          cadena_transformaciones += "s" + "  " + x_scale.toString() + "  " + y_scale.toString() + "<br><br>";
+          break;
+        case "r":
+          // Rotate
+          var rot_angle = secuencia_operaciones[i][5];
+          var rot_x_axis = secuencia_operaciones[i][6];
+          var rot_y_axis = secuencia_operaciones[i][7];
+          matriz.rotate(rot_angle, rot_x_axis, rot_y_axis,1);
+          cadena_transformaciones += "r" + "  " + rot_angle.toString() + "  " + rot_x_axis.toString() + "  " + rot_y_axis.toString() + "<br><br>";
+          break;
+        default:
+        // Format error
+          document.writeln("Wrong operation specifier, " + operacion_requerida);
+          return;
+      }
+	  }
+    var e = matriz.elements;
+    cadena_transformaciones += "<table style=\"text-align: left;\" border=\"1\" cellpadding=\"2\" cellspacing=\"2\"><tbody><tr><td>" + e[0].toString() + "</td><td>" + e[4].toString() + "</td><td>" + e[8].toString() + "</td><td>" + e[12].toString() + "</td></tr><br><br>" + 
+        "<tr><td>"  + e[1].toString() + "</td><td>" + e[5].toString() + "</td><td>" + e[9].toString() + "</td><td>" + e[13].toString() + "</td></tr><br><br>" +
+        "<tr><td>" + e[2].toString() + "</td><td>" + e[6].toString() + "</td><td>" + e[10].toString() + "</td><td>" + e[14].toString() + "</td></tr><br><br>" +
+        "<tr><td>" + e[3].toString() + "</td><td>" + e[7].toString() + "</td><td>" + e[11].toString() + "</td><td>" + e[15].toString() + "</td></tr></tbody></table><br><br>";      
+    document.getElementById("mensajes").innerHTML = cadena_transformaciones;
+  }
+  else {
+    // Initialize number of operations and start operation
+    num_operaciones = secuencia_operaciones.length;
+    document.getElementById("numops").value = num_operaciones.toString();
+    document.getElementById("numstart").value = "0";
+  }
+  gl.uniformMatrix4fv(js_mat_transfo, false, matriz.elements);
+  
+  // Specify the color for clearing <canvas>
+ 
+  gl.drawArrays(gl.TRIANGLES, 0, cuantosVertices);
+  
+  // Cleanup before exiting
+  
+  gl.disableVertexAttribArray(js_position);
+  gl.disableVertexAttribArray(js_color);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  gl.deleteBuffer(vertexBuffer);
+  gl.deleteBuffer(ejesBuffer);
+  
+
+    
+}
+
+function alltogether() {
+init_run = 1;
+only_n_operations = secuencia_operaciones.length; // Execute all operations required in array
+start_operation = 0;  // Start from first operation in array
+  draw_triangles();		
+}
+
+function partialexec() {
+  init_run = 1;
+  only_n_operations = parseInt(document.getElementById("numops").value); // Execute only the number of operations specified in input field
+  if ((only_n_operations < 1) || (only_n_operations > num_operaciones)) {
+      document.writeln("Invalid number of operations, " + only_n_operations.toString());
+      return;
+  }
+  start_operation = parseInt(document.getElementById("numstart").value); // Start at operation specified in input field
+  if (start_operation < 0){
+      document.writeln("Invalid value for start operation, " + start_operation.toString());
+      return;
+    }
+  else if ((start_operation + only_n_operations) > num_operaciones){
+    document.writeln("Invalid value for start operation + only_n_operations, " + (start_operation + only_n_operations).toString());
+    return;
+  }
+  draw_triangles();
+}
+
+
+

@@ -1,4 +1,4 @@
-# Materiale del corso "Sistema Graficos y Multimedia" - anno 2017 - Università di Malaga
+# Materiale del corso "Sistemas Graficos y Multimedia" - anno 2017 - Università di Malaga
 
 ## [Asignatura SISTEMAS GRÁFICOS Y MULTIMEDIA (2016-17)](https://mop.cv.uma.es/course/view.php?id=8282)
 
