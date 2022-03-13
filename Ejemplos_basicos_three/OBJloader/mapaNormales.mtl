@@ -1,0 +1,44 @@
+# 3ds Max Wavefront OBJ Exporter v0.97b - (c)2007 guruware
+# File Created: 18.03.2014 13:14:07
+
+newmtl Botella
+	Ns 50.0000
+	Ni 1.5000
+	d 0.9000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.5882 0.3529 0.0000
+	Kd 0.5882 0.3529 0.0000
+	Ks 0.3000 0.8100 0.8100
+	Ke 0.0000 0.0000 0.0000
+	map_bump -bm 0.7500 Texturas\Map__14_Normal_Bump.tga
+
+newmtl Etiquetas
+	Ns 25.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 1.0000 1.0000 1.0000
+	Kd 1.0000 1.0000 1.0000
+	Ks 0.2500 0.2500 0.2500
+	Ke 0.0000 0.0000 0.0000
+	map_Ka Texturas\Etiquetas.png
+	map_Kd Texturas\Etiquetas.png
+	map_d Texturas\Etiquetas_Cutout.png
+
+newmtl Chapa
+	Ns 50.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 0.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 1.0000 1.0000 1.0000
+	Kd 1.0000 1.0000 1.0000
+	Ks 0.6600 0.6600 0.6600
+	Ke 0.0000 0.0000 0.0000
+	map_Ka Texturas\Etiquetas.png
+	map_Kd Texturas\Etiquetas.png
