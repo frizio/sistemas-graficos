@@ -1,0 +1,23 @@
+{
+  "name": "sistemas-graficos",
+  "version": "1.0.0",
+  "description": "- Maurizio La Rocca",
+  "main": "index.js",
+  "scripts": {
+    "deploy-ghp": "gh-pages -d threejs/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/frizio/sistemas-graficos.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/frizio/sistemas-graficos/issues"
+  },
+  "homepage": "https://github.com/frizio/sistemas-graficos#readme",
+  "devDependencies": {
+    "gh-pages": "^3.2.3"
+  }
+}
